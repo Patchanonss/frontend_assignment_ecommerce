@@ -9,82 +9,11 @@ import {
   useCallback,
   useMemo,
 } from 'react';
-import type { CartItem, Product, ToastMessage, ToastType } from '@/types';
-
-interface CartState {
-  items: CartItem[];
-  isCartOpen: boolean;
-  toasts: ToastMessage[];
-}
-
-type CartAction =
-  | { type: 'ADD_ITEM'; product: Product }
-  | { type: 'REMOVE_ITEM'; productId: string }
-  | { type: 'UPDATE_QUANTITY'; productId: string; quantity: number }
-  | { type: 'CLEAR_CART' }
-  | { type: 'SET_ITEMS'; items: CartItem[] }
-  | { type: 'TOGGLE_CART'; open: boolean }
-  | { type: 'ADD_TOAST'; toast: ToastMessage }
-  | { type: 'REMOVE_TOAST'; id: string };
-
-function cartReducer(state: CartState, action: CartAction): CartState {
-  switch (action.type) {
-    case 'ADD_ITEM': {
-      const existing = state.items.find(
-        (item) => item.product.id === action.product.id
-      );
-      if (existing) {
-        return {
-          ...state,
-          items: state.items.map((item) =>
-            item.product.id === action.product.id
-              ? { ...item, quantity: item.quantity + 1 }
-              : item
-          ),
-        };
-      }
-      return {
-        ...state,
-        items: [...state.items, { product: action.product, quantity: 1 }],
-      };
-    }
-    case 'REMOVE_ITEM':
-      return {
-        ...state,
-        items: state.items.filter((item) => item.product.id !== action.productId),
-      };
-    case 'UPDATE_QUANTITY':
-      if (action.quantity <= 0) {
-        return {
-          ...state,
-          items: state.items.filter((item) => item.product.id !== action.productId),
-        };
-      }
-      return {
-        ...state,
-        items: state.items.map((item) =>
-          item.product.id === action.productId
-            ? { ...item, quantity: action.quantity }
-            : item
-        ),
-      };
-    case 'CLEAR_CART':
-      return { ...state, items: [] };
-    case 'SET_ITEMS':
-      return { ...state, items: action.items };
-    case 'TOGGLE_CART':
-      return { ...state, isCartOpen: action.open };
-    case 'ADD_TOAST':
-      return { ...state, toasts: [...state.toasts, action.toast] };
-    case 'REMOVE_TOAST':
-      return { ...state, toasts: state.toasts.filter((t) => t.id !== action.id) };
-    default:
-      return state;
-  }
-}
+import type { Product, ToastMessage, ToastType } from '@/types';
+import { cartReducer, initialCartState } from './cartReducer';
 
 interface CartContextType {
-  items: CartItem[];
+  items: import('@/types').CartItem[];
   isCartOpen: boolean;
   toasts: ToastMessage[];
   addItem: (product: Product) => void;
@@ -101,11 +30,7 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | null>(null);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(cartReducer, {
-    items: [],
-    isCartOpen: false,
-    toasts: [],
-  });
+  const [state, dispatch] = useReducer(cartReducer, initialCartState);
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
@@ -171,11 +96,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   );
 
   const totalPrice = useMemo(
-    () =>
-      state.items.reduce(
-        (sum, item) => sum + item.product.price * item.quantity,
-        0
-      ),
+    () => state.items.reduce((sum, item) => sum + item.product.price * item.quantity, 0),
     [state.items]
   );
 
