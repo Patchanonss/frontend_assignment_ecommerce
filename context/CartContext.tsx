@@ -5,6 +5,7 @@ import {
   useContext,
   useReducer,
   useEffect,
+  useRef,
   useState,
   useCallback,
   useMemo,
@@ -74,19 +75,31 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'TOGGLE_CART', open });
   }, []);
 
-  const addToast = useCallback(
-    (message: string, type: ToastType = 'success') => {
-      const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      dispatch({ type: 'ADD_TOAST', toast: { id, message, type } });
-      const timer = setTimeout(() => {
-        dispatch({ type: 'REMOVE_TOAST', id });
-      }, 3000);
-      return () => clearTimeout(timer);
-    },
-    []
-  );
+  const toastTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  useEffect(() => {
+    const timers = toastTimers.current;
+    return () => {
+      timers.forEach((timer) => clearTimeout(timer));
+    };
+  }, []);
+
+  const addToast = useCallback((message: string, type: ToastType = 'success') => {
+    const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    dispatch({ type: 'ADD_TOAST', toast: { id, message, type } });
+    const timer = setTimeout(() => {
+      toastTimers.current.delete(id);
+      dispatch({ type: 'REMOVE_TOAST', id });
+    }, 3000);
+    toastTimers.current.set(id, timer);
+  }, []);
 
   const removeToast = useCallback((id: string) => {
+    const timer = toastTimers.current.get(id);
+    if (timer) {
+      clearTimeout(timer);
+      toastTimers.current.delete(id);
+    }
     dispatch({ type: 'REMOVE_TOAST', id });
   }, []);
 
